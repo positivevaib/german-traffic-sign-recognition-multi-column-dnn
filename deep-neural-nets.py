@@ -1,10 +1,10 @@
-# import packages
+# import dependencies
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 # define DNNs
-class net1(nn.Module):
+class Net1(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 100, 7)
@@ -29,7 +29,7 @@ class net1(nn.Module):
             num_features *= dim
         return num_features
 
-class net2(nn.Module):
+class Net2(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 100, 15)

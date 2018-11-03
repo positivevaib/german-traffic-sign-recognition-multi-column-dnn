@@ -1,4 +1,4 @@
-# import packages
+# import dependencies
 import torch
 import torchvision
 import os
