@@ -65,21 +65,31 @@ def load_data():
                         if image.startswith('00000') or image.startswith('00001') or image.startswith('00002'):
                             os.rename('training_set/' + file + '/' + image_class + '/' + image, 'validation_set/' + file + '/' + image_class + '/' + image)
 
+    # load training data
     print('loading training data')
 
-    # load training data
     training_data = {}
     for file in os.listdir('training_set'):
         if not file.startswith('.'):
             training_data[file] = torchvision.datasets.ImageFolder(root = 'training_set/' + file, transform = torchvision.transforms.ToTensor())
 
+    # load validation data
     print('loading validation data')
 
-    # load validation data
     validation_data = {}
     for file in os.listdir('validation_set'):
         if not file.startswith('.'):
             validation_data[file] = torchvision.datasets.ImageFolder(root = 'validation_set/' + file, transform = torchvision.transforms.ToTensor())
 
+    # load test data
+    print('loading test data')
+    
+    test_data = []
+    for image_name in os.listdir('test_set/images'):
+        if image_name.endswith('.ppm'):
+            image = Image.open('test_set/images/' + image_name)
+            image = torchvision.transforms.ToTensor(image)
+            test_data.append(image)
+
     # return data
-    return [training_data, validation_data]
+    return [training_data, validation_data, test_data]
