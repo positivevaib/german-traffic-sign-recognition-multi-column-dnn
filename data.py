@@ -6,26 +6,44 @@ import matlab.engine
 import torch
 import torchvision
 
+# define preprocessing and data loading functions
 def preprocess_data():
     '''crop images and call matlab preprocessing script'''
+    # crop and resize images
     print('resizing images')
 
+    # training set
     for image_class in os.listdir('training_set/original'):
         if not image_class.startswith('.'):
             annotations = pd.read_csv('training_set/original/' + image_class + '/GT-' + image_class + '.csv', sep = ';')
             annotations = annotations.set_index('Filename')
-            for file in os.listdir('training_set/original/' + image_class):
-                if file.startswith('000'):
-                    x1 = annotations.at[file, 'Roi.X1']
-                    y1 = annotations.at[file, 'Roi.Y1']
-                    x2 = annotations.at[file, 'Roi.X2']
-                    y2 = annotations.at[file, 'Roi.Y2']
+            for image_name in os.listdir('training_set/original/' + image_class):
+                if image_name.endswith('.ppm'):
+                    x1 = annotations.at[image_name, 'Roi.X1']
+                    y1 = annotations.at[image_name, 'Roi.Y1']
+                    x2 = annotations.at[image_name, 'Roi.X2']
+                    y2 = annotations.at[image_name, 'Roi.Y2']
 
-                    image = Image.open('training_set/original/' + image_class + '/' + file)
+                    image = Image.open('training_set/original/' + image_class + '/' + image_name)
                     image = image.crop((x1, y1, x2, y2))
                     image = image.resize((48, 48), resample = Image.BILINEAR)
 
-    print('preprocessing')
+    # test set
+    annotations = pd.read_csv('test_set/images/GT-final_test.test.csv', sep = ';')
+    annotations = annotations.set_index('Filename')
+    for image_name in os.listdir('test_set/images'):
+        if image_name.endswith('.ppm'):
+            x1 = annotations.at[image_name, 'Roi.X1']
+            y1 = annotations.at[image_name, 'Roi.Y1']
+            x2 = annotations.at[image_name, 'Roi.X2']
+            y2 = annotations.at[image_name, 'Roi.Y2']
+
+            image = Image.open('test_set/images/' + image_name)
+            image = image.crop((x1, y1, x2, y2))
+            image = image.resize((48, 48), resample = Image.BILINEAR)
+
+    # normalize images
+    print('normalizing images')
 
     eng = matlab.engine.start_matlab()
     eng.preprocessing(nargout = 0)
