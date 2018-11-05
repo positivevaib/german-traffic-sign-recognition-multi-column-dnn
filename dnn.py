@@ -18,8 +18,8 @@ class Net1(nn.Module):
         x = F.max_pool2d(F.tanh(self.conv2(x)), 2)
         x = F.max_pool2d(F.tanh(self.conv3(x)), 2)
         x = x.view(-1, self.num_flat_features(x))
-        x = F.tanh(self.fc1)
-        x = F.softmax(self.fc2)
+        x = F.tanh(self.fc1(x))
+        x = F.softmax(self.fc2(x))
         return x
 
     def num_flat_features(self, x):
@@ -43,8 +43,8 @@ class Net2(nn.Module):
         x = F.max_pool2d(F.tanh(self.conv2(x)), 2)
         x = F.max_pool2d(F.tanh(self.conv3(x)), 2)
         x = x.view(-1, self.num_flat_features(x))
-        x = F.tanh(self.fc1)
-        x = F.softmax(self.fc2)
+        x = F.tanh(self.fc1(x))
+        x = F.softmax(self.fc2(x))
         return x
 
     def num_flat_features(self, x):
