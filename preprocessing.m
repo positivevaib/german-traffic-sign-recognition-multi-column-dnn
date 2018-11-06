@@ -21,6 +21,8 @@ for class = classes'
         image_name = image.name;
         
         img = imread(strcat(training_file_path, class_name, '/', image_name));
+        
+        img = img/255;
         img_lab = rgb2lab(img);
         
         max_luminosity = 100;
