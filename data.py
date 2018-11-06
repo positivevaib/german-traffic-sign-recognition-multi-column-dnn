@@ -98,5 +98,7 @@ def load_test_data():
             image = torchvision.transforms.ToTensor()(image)
             test_data.append(image)
 
+    test_data = torch.utils.data.DataLoader(test_data, batch_size = len(test_data))
+    
     # return data
     return test_data
