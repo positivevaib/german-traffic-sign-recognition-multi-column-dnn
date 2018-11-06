@@ -75,7 +75,7 @@ def load_training_validation_data():
     training_data = {}
     for file in os.listdir('training_set'):
         if not file.startswith('.'):
-            training_data[file] = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root = 'training_set/' + file, transform = torchvision.transforms.ToTensor()), batch_size = 16, shuffle = True)
+            training_data[file] = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root = 'training_set/' + file, transform = torchvision.transforms.ToTensor()), batch_size = 32, shuffle = True)
 
     # load validation data
     print('loading validation data')
