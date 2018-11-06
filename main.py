@@ -79,7 +79,7 @@ for net_name in nets.keys():
 	print('training', net_name)
 	
 	for epoch in range(50):
-		for batch_id, data in enumerate(training_loader):
+		for _, data in enumerate(training_loader):
 			inputs = data[0]
 			labels = data[1]
 
@@ -111,7 +111,7 @@ for net_name in nets.keys():
 			loss = criterion(outputs, labels)
 			loss.backward()
 			optimizer.step()
-		
+			
 		# print current loss
 		print('epoch:', epoch + 1)
 		print('training loss:', loss.item())
