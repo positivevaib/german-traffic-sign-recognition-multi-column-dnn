@@ -5,9 +5,10 @@ from dnn import Net1, Net2
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision
+import torchvision.transforms as transforms
 import PIL
 import random
+import numpy as np
 
 # preprocess data
 if not os.path.isdir('validation_set'):
@@ -31,8 +32,7 @@ histeq_validation_loader = validation_set['histeq']
 adapthisteq_validation_loader = validation_set['adapthisteq']
 
 # test data
-test_set = load_test_data()
-test_loader = torch.utils.data.DataLoader(test_set, batch_size = len(test_set))
+test_loader = load_test_data()
 
 # instantiate DNNs
 nets = {}
@@ -87,17 +87,17 @@ for net_name in nets.keys():
 			for i in range(len(inputs)):
 				perturbation = random.choice([0, 1, 2, 3])
 				if perturbation == 1:
-					image = torchvision.transforms.ToPILImage()(inputs[i])
-					image = torchvision.transforms.RandomAffine(degrees = 0, translate = (0.1, 0.1), resample = PIL.Image.BILINEAR)(image)
-					inputs[i] = torchvision.transforms.ToTensor()(image)
+					image = transforms.ToPILImage()(inputs[i])
+					image = transforms.RandomAffine(degrees = 0, translate = (0.1, 0.1), resample = PIL.Image.BILINEAR)(image)
+					inputs[i] = transforms.ToTensor()(image)
 				elif perturbation == 2:
-					image = torchvision.transforms.ToPILImage()(inputs[i])
-					image = torchvision.transforms.RandomResizedCrop(size = 48, ratio = (1, 1))(image)
-					inputs[i] = torchvision.transforms.ToTensor()(image)
+					image = transforms.ToPILImage()(inputs[i])
+					image = transforms.RandomResizedCrop(size = 48, ratio = (1, 1))(image)
+					inputs[i] = transforms.ToTensor()(image)
 				elif perturbation == 3:
-					image = torchvision.transforms.ToPILImage()(inputs[i])
-					image = torchvision.transforms.RandomRotation(degrees = 5, resample = PIL.Image.BILINEAR)(image)
-					inputs[i] = torchvision.transforms.ToTensor()(image)
+					image = transforms.ToPILImage()(inputs[i])
+					image = transforms.RandomRotation(degrees = 5, resample = PIL.Image.BILINEAR)(image)
+					inputs[i] = transforms.ToTensor()(image)
 				else:
 					continue
 
@@ -117,8 +117,8 @@ for net_name in nets.keys():
 		print('training loss:', loss.item())
 
 		# check validation loss
-		validation_inputs, validation_labels = next(iter(validation_loader))
 		net.to('cpu')
+		validation_inputs, validation_labels = next(iter(validation_loader))
 		validation_loss = criterion(net(validation_inputs), validation_labels)
 		net.to(device)
 
@@ -127,4 +127,23 @@ for net_name in nets.keys():
 		if validation_loss == 0:
 			break
 
-# define MCDNN
+# create MCDNN
+# pass test data through DNNs
+dnn_outputs = []
+for net in nets.values():
+	dnn_outputs.append(net(test_loader))
+
+# average results
+mcdnn_output = dnn_outputs[0]
+for dnn_output in dnn_outputs[1:]:
+	mcdnn_output.add_(dnn_output)
+
+mcdnn_output.div_(len(dnn_outputs))
+
+# compute predictions
+_, predictions = torch.argmax(mcdnn_output, dim = 0)
+
+# save data
+file_out = open('test_out.csv', 'w+')
+np.savetxt(file_out, predictions.numpy(), delimiter = ',')
+file_out.close()
