@@ -116,7 +116,7 @@ for net_name in nets.keys():
 		print('epoch:', epoch + 1)
 		print('training loss:', loss.item())
 
-		# check validation loss
+		# apply early stopping
 		net.to('cpu')
 		validation_inputs, validation_labels = next(iter(validation_loader))
 		validation_loss = criterion(net(validation_inputs), validation_labels)
