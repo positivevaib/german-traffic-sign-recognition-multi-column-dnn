@@ -121,7 +121,7 @@ for net_name in nets.keys():
 			running_loss += loss.item()
 			# save training and validation loss to file
 			if batch_idx % 10 == 9:
-				loss_file.write(str(epoch + 1) + ',' + str(batch_idx + 1) + ',' + str(loss.item()))
+				loss_file.write(str(epoch + 1) + ',' + str(batch_idx + 1) + ',' + str(loss.item()) + '\n')
 				running_loss = 0
 
 		# print current loss
