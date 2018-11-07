@@ -1,7 +1,7 @@
 # import dependencies
 import os
 from data import preprocess_data, load_training_validation_data, load_test_data
-from dnn import Net1, Net2
+from dnn import weights_init, Net1, Net2
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -56,6 +56,7 @@ print(device)
 print('training DNNs')
 for net_name in nets.keys():
 	net = nets[net_name]
+	net.apply(weights_init)
 	net.to(device)
 
 	if 'original' in net_name:
