@@ -7,8 +7,8 @@ import torch.nn.functional as F
 def weights_init(module):
     '''initialize parameters'''
     if isinstance(module, (nn.Conv2d, nn.Linear)):
-        nn.init.uniform_(module.weight.data, a = -0.05, b = -0.05)
-        nn.init.uniform_(module.bias.data, a = -0.05, b = -0.05)
+        nn.init.uniform_(module.weight.data, a = -0.05, b = 0.05)
+        nn.init.uniform_(module.bias.data, a = -0.05, b = 0.05)
 
 # define DNNs
 class Net1(nn.Module):
