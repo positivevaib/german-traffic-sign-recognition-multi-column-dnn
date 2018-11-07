@@ -76,11 +76,16 @@ for net_name in nets.keys():
 	criterion = nn.CrossEntropyLoss()
 	optimizer = optim.Adam(net.parameters())
     
+	# create csv file to track training and validation loss
+	loss_file = open(net_name + '_' + 'loss.csv', 'w+')
+	loss_file.write('epoch,batch,training_loss\n')
+
 	# train net
 	print('training', net_name)
-	
+
 	for epoch in range(50):
-		for _, data in enumerate(training_loader):
+		running_loss = 0
+		for batch_idx, data in enumerate(training_loader):
 			inputs = data[0]
 			labels = data[1]
 
@@ -113,6 +118,12 @@ for net_name in nets.keys():
 			loss.backward()
 			optimizer.step()
 			
+			running_loss += loss.item()
+			# save training and validation loss to file
+			if batch_idx % 10 == 9:
+				loss_file.write(str(epoch + 1) + ',' + str(batch_idx + 1) + ',' + str(loss.item()))
+				running_loss = 0
+
 		# print current loss
 		print('epoch:', epoch + 1)
 		print('training loss:', loss.item())
