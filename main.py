@@ -8,6 +8,7 @@ import torch.optim as optim
 import torchvision.transforms as transforms
 import PIL
 import random
+import sys
 import numpy as np
 
 # preprocess data
@@ -84,7 +85,6 @@ for net_name in nets.keys():
 	print('training', net_name)
 
 	for epoch in range(50):
-		running_loss = 0
 		for batch_idx, data in enumerate(training_loader):
 			inputs = data[0]
 			labels = data[1]
@@ -117,12 +117,13 @@ for net_name in nets.keys():
 			loss = criterion(outputs, labels)
 			loss.backward()
 			optimizer.step()
-			
-			running_loss += loss.item()
+
 			# save training and validation loss to file
 			if batch_idx % 10 == 9:
 				loss_file.write(str(epoch + 1) + ',' + str(batch_idx + 1) + ',' + str(loss.item()) + '\n')
-				running_loss = 0
+
+				if batch_idx % 500 == 499:
+					print(epoch + 1, batch_idx + 1, loss.item())
 
 		# print current loss
 		print('epoch:', epoch + 1)
@@ -136,7 +137,7 @@ for net_name in nets.keys():
 
 		print('validation loss:', validation_loss.item())
 
-		if validation_loss == 0:
+		if (validation_loss - 0) < sys.float_info.epsilon:
 			break
 
 # create MCDNN
