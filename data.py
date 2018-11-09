@@ -31,29 +31,27 @@ def normalize_images(path):
     eng.preprocessing(path, nargout = 0)
     eng.exit()
 
-def preprocess_images(path, test_set = False):
+def preprocess_images(path, dataset):
     '''preprocess images'''
-    if not test_set:
+    if dataset == 'training':
         for image_class in os.listdir(os.path.join(path, os.listdir(path)[0])):
             crop_and_resize_images(os.path.join(path, os.listdir(path)[0], image_class))
             normalize_images(path)
-    else:
+    elif dataset = 'test':
         crop_and_resize_images(os.path.join(path, os.listdir(path)[0]))
 
 def split_dataset(path, prefixes = 3):
     '''split dataset into training and validation sets'''
-    if not os.path.isdir(os.path.join(os.path.dirname(path), 'validation_set')):
-        os.mkdir(os.path.join(os.path.dirname(path), 'validation_set'))
-        for file in os.listdir(path):
-            if os.path.isdir(file):
-                os.mkdir(os.path.join(os.path.dirname(path), 'validation_set', file))
-                for image_class in os.listdir(os.path.join(path, file)):
-                    if os.path.isdir(os.path.join(path, file, image_class)):
-                        os.mkdir(os.path.join(os.path.dirname(path), 'validation_set', file, image_class))
-                        for image in os.listdir(os.path.join(path, file, image_class)):
-                            for idx in range(prefixes):
-                                if image.startswith('0000' + str(idx)):
-                                    os.rename(os.path.join(path, file, image_class, image), os.path.join(os.path.dirname(path), file, image_class, image))
+    for file in os.listdir(path):
+        if os.path.isdir(file):
+            os.mkdir(os.path.join(os.path.dirname(path), 'validation_set', file))
+            for image_class in os.listdir(os.path.join(path, file)):
+                if os.path.isdir(os.path.join(path, file, image_class)):
+                    os.mkdir(os.path.join(os.path.dirname(path), 'validation_set', file, image_class))
+                    for image in os.listdir(os.path.join(path, file, image_class)):
+                        for idx in range(prefixes):
+                            if image.startswith('0000' + str(idx)):
+                                os.rename(os.path.join(path, file, image_class, image), os.path.join(os.path.dirname(path), file, image_class, image))
 
 def load_dataset(path, dataset, training_batch_size = 1):
     '''load dataset'''
@@ -62,13 +60,17 @@ def load_dataset(path, dataset, training_batch_size = 1):
         for file in os.listdir(os.path.join(path, 'training_set')):
             if os.path.isdir(os.path.join(path, 'training_set', file)):
                 data[file] = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root = os.path.join(path, 'test_set', file)), transform = torchvision.transforms.ToTensor(), batch_size = training_batch_size)
+        return data
+        
     elif dataset == 'validation':
         data = {}
         for file in os.listdir(os.path.join(path, 'validation_set')):
             if os.path.isdir(os.path.join(path, 'validation_set', file)):
                 validation_set = torchvison.datasets.ImageFolder(root = os.path.join(path, 'validation_set', file), transform = torchvision.transforms.ToTensor())
                 data[file] = torch.utils.data.DataLoader(validation_set, batch_size = len(validation_set))
-    else:
+        return data
+
+    elif dataset = 'test':
         data = []
         for file in os.listdir(os.path.join(path, 'test_set')):
             if os.path.isdir(os.path.join(path, 'test_set', file)):
@@ -77,5 +79,4 @@ def load_dataset(path, dataset, training_batch_size = 1):
                     image = torchvision.transforms.ToTensor()(image)
                     data.append(image)
         data = torch.utils.data.DataLoader(data, batch_size = len(data))
-
-    return data
+        return data
