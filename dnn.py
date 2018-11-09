@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # define function
-def weights_init(module):
+def parameters_init(module):
     '''initialize parameters'''
     if isinstance(module, (nn.Conv2d, nn.Linear)):
         nn.init.uniform_(module.weight.data, a = -0.05, b = 0.05)
@@ -12,7 +12,9 @@ def weights_init(module):
 
 # define classes
 class Net1(nn.Module):
+    '''five layer conv net'''
     def __init__(self):
+        '''constructor'''
         super().__init__()
         self.conv1 = nn.Conv2d(3, 100, 7)
         self.conv2 = nn.Conv2d(100, 150, 4)
@@ -21,6 +23,7 @@ class Net1(nn.Module):
         self.fc2 = nn.Linear(300, 43)
     
     def forward(self, x):
+        '''perform single forward pass'''
         x = F.max_pool2d(F.tanh(self.conv1(x)), 2)
         x = F.max_pool2d(F.tanh(self.conv2(x)), 2)
         x = F.max_pool2d(F.tanh(self.conv3(x)), 2)
@@ -30,6 +33,7 @@ class Net1(nn.Module):
         return x
 
     def num_flat_features(self, x):
+        '''compute total features'''
         size = x.size()[1:]
         num_features = 1
         for dim in size:
@@ -37,7 +41,9 @@ class Net1(nn.Module):
         return num_features
 
 class Net2(nn.Module):
+    '''five layer conv net'''
     def __init__(self):
+        '''constructor'''
         super().__init__()
         self.conv1 = nn.Conv2d(3, 100, 15)
         self.conv2 = nn.Conv2d(100, 150, 4)
@@ -46,6 +52,7 @@ class Net2(nn.Module):
         self.fc2 = nn.Linear(300, 43)
 
     def forward(self, x):
+        '''perform single forward pass'''
         x = F.max_pool2d(F.tanh(self.conv1(x)), 2)
         x = F.max_pool2d(F.tanh(self.conv2(x)), 2)
         x = F.max_pool2d(F.tanh(self.conv3(x)), 2)
@@ -55,6 +62,7 @@ class Net2(nn.Module):
         return x
 
     def num_flat_features(self, x):
+        '''compute total features'''
         size = x.size()[1:]
         num_features = 1
         for dim in size:
