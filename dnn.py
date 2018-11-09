@@ -3,14 +3,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# define parameter initialization function
+# define function
 def weights_init(module):
     '''initialize parameters'''
     if isinstance(module, (nn.Conv2d, nn.Linear)):
         nn.init.uniform_(module.weight.data, a = -0.05, b = 0.05)
         nn.init.uniform_(module.bias.data, a = -0.05, b = 0.05)
 
-# define DNNs
+# define classes
 class Net1(nn.Module):
     def __init__(self):
         super().__init__()
