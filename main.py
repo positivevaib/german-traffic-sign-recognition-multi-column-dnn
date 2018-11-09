@@ -1,4 +1,5 @@
 # import dependencies
+import argparse
 import numpy as np
 import os
 import PIL
@@ -13,17 +14,26 @@ import torchvision.transforms as transforms
 import data
 import dnn
 
+# create argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--data', type = str, default = os.getcwd(), help = 'absolute path to datasets')
+parser.add_argument('-p', '--preprocess', action = 'store_true', help = 'preprocess data')
+
+args = parser.parse_args()
+
 # current path
-path = os.getcwd()
+path = args.data
 
 # preprocess data
-if not os.path.isdir(os.path.join(path, 'validation_set')):
-	data.preprocess_images(path, dataset = 'training')
-	data.preprocess_images(path, dataset = 'test')
+if args.preprocess:
+	print('preprocessing')
+	#data.preprocess_images(path, dataset = 'training')
+	#data.preprocess_images(path, dataset = 'test')
 
 	data.split_dataset(os.path.join(path, 'training_set'))
 
 # load training data
+print('\rloading training data')
 training_set = data.load_dataset(path, dataset = 'training', training_batch_size = 32)
 original_training_loader = training_set['original']
 imadjust_training_loader = training_set['imadjust']
@@ -31,6 +41,7 @@ histeq_training_loader = training_set['histeq']
 adapthisteq_training_loader = training_set['adapthisteq']
 
 # load validation data
+print('\rloading validation data')
 validation_set = data.load_dataset(path, dataset = 'validation')
 original_validation_loader = validation_set['original']
 imadjust_validation_loader = validation_set['imadjust']
@@ -38,6 +49,7 @@ histeq_validation_loader = validation_set['histeq']
 adapthisteq_validation_loader = validation_set['adapthisteq']
 
 # load test data
+print('\rloading test data')
 test_loader = data.load_dataset(path, dataset = 'test')
 
 # instantiate deep neural nets
@@ -59,10 +71,13 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(device)
 
 # train deep neural nets
+print('\rtraining deep neural nets')
 for net_name in nets.keys():
 	net = nets[net_name]
-	net.apply(dnn.weights_init)
+	net.apply(dnn.parameters_init)
 	net.to(device)
+
+	print('\r', net_name)
 
 	if 'original' in net_name:
 		training_loader = original_training_loader
