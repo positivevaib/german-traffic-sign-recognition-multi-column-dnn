@@ -1,104 +1,81 @@
 # import dependencies
+import glob
 import os
-import pandas as pd
-from PIL import Image
+
 import matlab.engine
+import pandas as pd
+import PIL.Image as Image
 import torch
 import torchvision
 
-# define preprocessing and data loading functions
-def preprocess_data():
-    '''crop images and call matlab preprocessing script'''
-    # crop and resize images
-    print('resizing images')
-    # training set
-    for image_class in os.listdir('training_set/original'):
-        if not image_class.startswith('.'):
-            annotations = pd.read_csv('training_set/original/' + image_class + '/GT-' + image_class + '.csv', sep = ';')
-            annotations = annotations.set_index('Filename')
-
-            for image_name in os.listdir('training_set/original/' + image_class):
-                if image_name.endswith('.ppm'):
-                    x1 = annotations.at[image_name, 'Roi.X1']
-                    y1 = annotations.at[image_name, 'Roi.Y1']
-                    x2 = annotations.at[image_name, 'Roi.X2']
-                    y2 = annotations.at[image_name, 'Roi.Y2']
-
-                    image = Image.open('training_set/original/' + image_class + '/' + image_name)
-                    image = image.crop((x1, y1, x2, y2))
-                    image = image.resize((48, 48), resample = Image.BILINEAR)
-                    image.save('training_set/original/' + image_class + '/' + image_name)
-
-    # test set
-    annotations = pd.read_csv('test_set/images/GT-final_test.test.csv', sep = ';')
+# define functions
+def crop_and_resize_images(path):
+    '''crop images according to annotated bounding boxes and resize to given dimensions'''
+    annotations = pd.read_csv(glob.glob(os.path.join(path, '*.csv')))
     annotations = annotations.set_index('Filename')
 
-    for image_name in os.listdir('test_set/images'):
-        if image_name.endswith('.ppm'):
-            x1 = annotations.at[image_name, 'Roi.X1']
-            y1 = annotations.at[image_name, 'Roi.Y1']
-            x2 = annotations.at[image_name, 'Roi.X2']
-            y2 = annotations.at[image_name, 'Roi.Y2']
+    for image_name in glob.glob(path, '*.ppm'):
+        x1 = annotations.at[image_name, 'Roi.X1']
+        y1 = annotations.at[image_name, 'Roi.Y1']
+        x2 = annotations.at[image_name, 'Roi.X2']
+        y2 = annotations.at[image_name, 'Roi.Y2']
 
-            image = Image.open('test_set/images/' + image_name)
-            image = image.crop((x1, y1, x2, y2))
-            image = image.resize((48, 48), resample = Image.BILINEAR)
-            image.save('test_set/images/' + image_name)
+        image = Image.open(os.path.join(path, image_name))
+        image = image.crop((x1, y1, x2, y2))
+        image = image.resize((48, 48), resample = Image.BILINEAR)
+        image.save(os.path.join(path, image_name))
 
-    # normalize images
-    print('normalizing images')
+def normalize_images(path):
+    '''run matlab script to normalize images'''
     eng = matlab.engine.start_matlab()
-    eng.preprocessing(nargout = 0)
+    eng.preprocessing(path, nargout = 0)
     eng.exit()
 
-def load_training_validation_data():
-    '''load training and validation data'''
-    # create validation split
-    if not os.path.isdir('validation_set'):
-        print('creating validation set')
-        os.mkdir('validation_set')
+def preprocess_images(path, test_set = False):
+    '''preprocess images'''
+    if not test_set:
+        for image_class in os.listdir(os.path.join(path, os.listdir(path)[0])):
+            crop_and_resize_images(os.path.join(path, os.listdir(path)[0], image_class))
+            normalize_images(path)
+    else:
+        crop_and_resize_images(os.path.join(path, os.listdir(path)[0]))
 
-        for file in os.listdir('training_set'):
-            if not file.startswith('.'):
-                os.mkdir('validation_set/' + file)
+def split_dataset(path, prefixes = 3):
+    '''split dataset into training and validation sets'''
+    if not os.path.isdir(os.path.join(os.path.dirname(path), 'validation_set')):
+        os.mkdir(os.path.join(os.path.dirname(path), 'validation_set'))
+        for file in os.listdir(path):
+            if os.path.isdir(file):
+                os.mkdir(os.path.join(os.path.dirname(path), 'validation_set', file))
+                for image_class in os.listdir(os.path.join(path, file)):
+                    if os.path.isdir(os.path.join(path, file, image_class)):
+                        os.mkdir(os.path.join(os.path.dirname(path), 'validation_set', file, image_class))
+                        for image in os.listdir(os.path.join(path, file, image_class)):
+                            for idx in range(prefixes):
+                                if image.startswith('0000' + str(idx)):
+                                    os.rename(os.path.join(path, file, image_class, image), os.path.join(os.path.dirname(path), file, image_class, image))
 
-                for image_class in os.listdir('training_set/' + file):
-                    if image_class.startswith('000'):
-                        os.mkdir('validation_set/' + file + '/' + image_class)
+def load_dataset(path, dataset, training_batch_size = 1):
+    '''load dataset'''
+    if dataset = 'training':
+        data = {}
+        for file in os.listdir(os.path.join(path, 'training_set')):
+            if os.path.isdir(os.path.join(path, 'training_set', file)):
+                data[file] = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root = os.path.join(path, 'test_set', file)), transform = torchvision.transforms.ToTensor(), batch_size = training_batch_size)
+    elif dataset == 'validation':
+        data = {}
+        for file in os.listdir(os.path.join(path, 'validation_set')):
+            if os.path.isdir(os.path.join(path, 'validation_set', file)):
+                validation_set = torchvison.datasets.ImageFolder(root = os.path.join(path, 'validation_set', file), transform = torchvision.transforms.ToTensor())
+                data[file] = torch.utils.data.DataLoader(validation_set, batch_size = len(validation_set))
+    else:
+        data = []
+        for file in os.listdir(os.path.join(path, 'test_set')):
+            if os.path.isdir(os.path.join(path, 'test_set', file)):
+                for image_name in glob.glob(os.path.join(path, 'test_set', file), '*.ppm'):
+                    image = Image.open(os.path.join(path, 'test_set', file, image_name))
+                    image = torchvision.transforms.ToTensor()(image)
+                    data.append(image)
+        data = torch.utils.data.DataLoader(data, batch_size = len(data))
 
-                        for image in os.listdir('training_set/' + file + '/' + image_class):
-                            if image.startswith('00000') or image.startswith('00001') or image.startswith('00002'):
-                                os.rename('training_set/' + file + '/' + image_class + '/' + image, 'validation_set/' + file + '/' + image_class + '/' + image)
-
-    # load training data
-    print('loading training data')
-    training_data = {}
-    for file in os.listdir('training_set'):
-        if not file.startswith('.'):
-            training_data[file] = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root = 'training_set/' + file, transform = torchvision.transforms.ToTensor()), batch_size = 32, shuffle = True)
-
-    # load validation data
-    print('loading validation data')
-    validation_data = {}
-    for file in os.listdir('validation_set'):
-        if not file.startswith('.'):
-            validation_set = torchvision.datasets.ImageFolder(root = 'validation_set/' + file, transform = torchvision.transforms.ToTensor())
-            validation_data[file] = torch.utils.data.DataLoader(validation_set, batch_size = len(validation_set))
-
-    # return data
-    return [training_data, validation_data]
-
-def load_test_data():
-    '''load test data'''
-    print('loading test data')
-    test_data = []
-    for image_name in os.listdir('test_set/images'):
-        if image_name.endswith('.ppm'):
-            image = Image.open('test_set/images/' + image_name)
-            image = torchvision.transforms.ToTensor()(image)
-            test_data.append(image)
-
-    test_data = torch.utils.data.DataLoader(test_data, batch_size = len(test_data))
-    
-    # return data
-    return test_data
+    return data
