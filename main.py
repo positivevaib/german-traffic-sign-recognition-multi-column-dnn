@@ -1,63 +1,67 @@
 # import dependencies
+import numpy as np
 import os
-from data import preprocess_data, load_training_validation_data, load_test_data
-from dnn import weights_init, Net1, Net2
+import PIL
+import random
+import sys
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
-import PIL
-import random
-import sys
-import numpy as np
+
+import data
+import dnn
+
+# current path
+path = os.getcwd()
 
 # preprocess data
-if not os.path.isdir('validation_set'):
-	preprocess_data()
+if not os.path.isdir(os.path.join(path, 'validation_set')):
+	data.preprocess_images(path, dataset = 'training')
+	data.preprocess_images(path, dataset = 'test')
 
-# load data
-data = load_training_validation_data()
+	data.split_dataset(os.path.join(path, 'training_set'))
 
-# training data
-training_set = data[0]
+# load training data
+training_set = data.load_dataset(path, dataset = 'training', training_batch_size = 32)
 original_training_loader = training_set['original']
 imadjust_training_loader = training_set['imadjust']
 histeq_training_loader = training_set['histeq']
 adapthisteq_training_loader = training_set['adapthisteq']
 
-# validation data
-validation_set = data[1]
+# load validation data
+validation_set = data.load_dataset(path, dataset = 'validation')
 original_validation_loader = validation_set['original']
 imadjust_validation_loader = validation_set['imadjust']
 histeq_validation_loader = validation_set['histeq']
 adapthisteq_validation_loader = validation_set['adapthisteq']
 
-# test data
-test_loader = load_test_data()
+# load test data
+test_loader = data.load_dataset(path, dataset = 'test')
 
-# instantiate DNNs
+# instantiate deep neural nets
 nets = {}
-nets['original_net1'] = Net1()
-nets['original_net2'] = Net2()
+nets['original_net1'] = dnn.Net1()
+nets['original_net2'] = dnn.Net2()
 
-nets['imadjust_net1'] = Net1()
-nets['imadjust_net2'] = Net2()
+nets['imadjust_net1'] = dnn.Net1()
+nets['imadjust_net2'] = dnn.Net2()
 
-nets['histeq_net1'] = Net1()
-nets['histeq_net2'] = Net2()
+nets['histeq_net1'] = dnn.Net1()
+nets['histeq_net2'] = dnn.Net2()
 
-nets['adapthisteq_net1'] = Net1()
-nets['adapthisteq_net2'] = Net2()
+nets['adapthisteq_net1'] = dnn.Net1()
+nets['adapthisteq_net2'] = dnn.Net2()
 
 # setup device
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(device)
 
-# train DNNs
-print('training DNNs')
+# train deep neural nets
 for net_name in nets.keys():
 	net = nets[net_name]
-	net.apply(weights_init)
+	net.apply(dnn.weights_init)
 	net.to(device)
 
 	if 'original' in net_name:
@@ -81,10 +85,11 @@ for net_name in nets.keys():
 	loss_file = open(net_name + '_' + 'loss.csv', 'w+')
 	loss_file.write('epoch,batch,training_loss\n')
 
-	# train net
-	print('training', net_name)
+	# train deep neural net
+	for epoch in range(30):
+		print('epoch:', epoch + 1)
 
-	for epoch in range(50):
+		running_loss = 0
 		for batch_idx, data in enumerate(training_loader):
 			inputs = data[0]
 			labels = data[1]
@@ -118,15 +123,14 @@ for net_name in nets.keys():
 			loss.backward()
 			optimizer.step()
 
+			running_loss += loss.item()
+
 			# save training and validation loss to file
 			if batch_idx % 10 == 9:
-				loss_file.write(str(epoch + 1) + ',' + str(batch_idx + 1) + ',' + str(loss.item()) + '\n')
-
-				if batch_idx % 500 == 499:
-					print(epoch + 1, batch_idx + 1, loss.item())
+				loss_file.write(str(epoch + 1) + ',' + str(batch_idx + 1) + ',' + str(running_loss/10) + '\n')
+				running_loss = 0
 
 		# print current loss
-		print('epoch:', epoch + 1)
 		print('training loss:', loss.item())
 
 		# apply early stopping
@@ -140,8 +144,10 @@ for net_name in nets.keys():
 		if (validation_loss - 0) < sys.float_info.epsilon:
 			break
 
-# create MCDNN
-# pass test data through DNNs
+	# save trained parameters
+	torch.save(net.state_dict(), path)
+
+# create multi-column deep neural net
 dnn_outputs = []
 for net in nets.values():
 	dnn_outputs.append(net(test_loader))
@@ -156,7 +162,6 @@ mcdnn_output.div_(len(dnn_outputs))
 # compute predictions
 _, predictions = torch.argmax(mcdnn_output, dim = 0)
 
-# save data
-file_out = open('test_out.csv', 'w+')
+# save predictions
+file_out = open('mcdnn_predictions.csv', 'w+')
 np.savetxt(file_out, predictions.numpy(), delimiter = ',')
-file_out.close()
