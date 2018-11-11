@@ -164,7 +164,7 @@ for net_name in nets.keys():
 			break
 
 	# save trained parameters
-	torch.save(net.state_dict(), path)
+	torch.save(net.state_dict(), os.path.join(path, (net_name + '.pth')))
 
 # create multi-column deep neural net
 dnn_outputs = []
