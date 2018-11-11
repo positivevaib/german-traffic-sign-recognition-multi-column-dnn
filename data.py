@@ -63,7 +63,7 @@ def load_dataset(path, dataset, training_batch_size = 1):
         data = {}
         for file_name in os.listdir(os.path.join(path, 'training_set')):
             if os.path.isdir(os.path.join(path, 'training_set', file_name)):
-                data[file_name] = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root = os.path.join(path, 'training_set', file_name), transform = torchvision.transforms.ToTensor()), batch_size = training_batch_size)
+                data[file_name] = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(root = os.path.join(path, 'training_set', file_name), transform = torchvision.transforms.ToTensor()), batch_size = training_batch_size, shuffle = True)
         return data
         
     elif dataset == 'validation':
