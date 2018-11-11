@@ -9,8 +9,8 @@ adapthisteq_file_path = fullfile(path, 'adapthisteq');
 classes = dir(fullfile(training_file_path, '00*'));
 for class = classes'
     class_name = class.name;
-
-    feedback = ['processing class: ', class_name];
+    
+    feedback = ['normalizing class ', class_name];
     disp(feedback);
 
     mkdir(fullfile(imadjust_file_path, class_name));
