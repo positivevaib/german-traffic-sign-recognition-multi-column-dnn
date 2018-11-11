@@ -26,14 +26,16 @@ path = args.data
 
 # preprocess data
 if args.preprocess:
-	print('preprocessing')
-	#data.preprocess_images(path, dataset = 'training')
-	#data.preprocess_images(path, dataset = 'test')
+	print('preprocessing\n')
+	data.preprocess_images(path, dataset = 'training')
+	data.preprocess_images(path, dataset = 'test')
 
 	data.split_dataset(os.path.join(path, 'training_set'))
 
+	print()
+
 # load training data
-print('\rloading training data')
+print('loading training data')
 training_set = data.load_dataset(path, dataset = 'training', training_batch_size = 32)
 original_training_loader = training_set['original']
 imadjust_training_loader = training_set['imadjust']
@@ -41,7 +43,7 @@ histeq_training_loader = training_set['histeq']
 adapthisteq_training_loader = training_set['adapthisteq']
 
 # load validation data
-print('\rloading validation data')
+print('loading validation data')
 validation_set = data.load_dataset(path, dataset = 'validation')
 original_validation_loader = validation_set['original']
 imadjust_validation_loader = validation_set['imadjust']
@@ -49,7 +51,7 @@ histeq_validation_loader = validation_set['histeq']
 adapthisteq_validation_loader = validation_set['adapthisteq']
 
 # load test data
-print('\rloading test data')
+print('loading test data\n')
 test_loader = data.load_dataset(path, dataset = 'test')
 
 # instantiate deep neural nets
@@ -67,17 +69,17 @@ nets['adapthisteq_net1'] = dnn.Net1()
 nets['adapthisteq_net2'] = dnn.Net2()
 
 # setup device
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-print(device)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print('device:', device, '\n')
 
 # train deep neural nets
-print('\rtraining deep neural nets')
+print('training deep neural nets\n')
 for net_name in nets.keys():
 	net = nets[net_name]
 	net.apply(dnn.parameters_init)
 	net.to(device)
 
-	print('\r', net_name)
+	print(net_name)
 
 	if 'original' in net_name:
 		training_loader = original_training_loader
@@ -101,8 +103,9 @@ for net_name in nets.keys():
 	loss_file.write('epoch,batch,training_loss\n')
 
 	# train deep neural net
-	for epoch in range(30):
-		print('epoch:', epoch + 1)
+	total_epochs = 30
+	for epoch in range(total_epochs):
+		print('epoch', epoch + 1, 'of', total_epochs)
 
 		running_loss = 0
 		for batch_idx, data in enumerate(training_loader):
@@ -143,6 +146,7 @@ for net_name in nets.keys():
 			# save training and validation loss to file
 			if batch_idx % 10 == 9:
 				loss_file.write(str(epoch + 1) + ',' + str(batch_idx + 1) + ',' + str(running_loss/10) + '\n')
+				print('[', epoch + 1, ',', batch_idx + 1, ']: ', running_loss/10, sep = '')
 				running_loss = 0
 
 		# print current loss
