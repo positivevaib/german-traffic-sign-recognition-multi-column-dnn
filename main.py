@@ -157,7 +157,7 @@ for net_name in nets.keys():
 		print('validation loss:', validation_loss.item())
 
 		# apply early stopping
-		if (validation_loss - 0) < sys.float_info.epsilon:
+		if validation_loss < sys.float_info.epsilon:
 			break
 
 	# save trained parameters
