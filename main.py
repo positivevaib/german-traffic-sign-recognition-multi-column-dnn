@@ -73,13 +73,13 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('device:', device, '\n')
 
 # train deep neural nets
-print('training deep neural nets\n')
+print('training deep neural nets')
 for net_name in nets.keys():
 	net = nets[net_name]
 	net.apply(dnn.parameters_init)
 	net.to(device)
 
-	print(net_name)
+	print('\n' + net_name)
 
 	if 'original' in net_name:
 		training_loader = original_training_loader
@@ -100,13 +100,14 @@ for net_name in nets.keys():
     
 	# create csv file to track training and validation loss
 	loss_file = open(net_name + '_' + 'loss.csv', 'w+')
-	loss_file.write('epoch,batch,training_loss\n')
+	loss_file.write('epoch,training_loss,validation_loss\n')
 
 	# train deep neural net
-	total_epochs = 30
+	total_epochs = 15
 	for epoch in range(total_epochs):
 		print('epoch', epoch + 1, 'of', total_epochs)
 
+		batch_idx = 0
 		running_loss = 0
 		for batch_idx, data in enumerate(training_loader):
 			inputs = data[0]
@@ -143,23 +144,19 @@ for net_name in nets.keys():
 
 			running_loss += loss.item()
 
-			# save training and validation loss to file
-			if batch_idx % 10 == 9:
-				loss_file.write(str(epoch + 1) + ',' + str(batch_idx + 1) + ',' + str(running_loss/10) + '\n')
-				print('[', epoch + 1, ',', batch_idx + 1, ']: ', running_loss/10, sep = '')
-				running_loss = 0
-
-		# print current loss
-		print('training loss:', loss.item())
-
-		# apply early stopping
+		# save training and validation loss to file
 		net.to('cpu')
 		validation_inputs, validation_labels = next(iter(validation_loader))
 		validation_loss = criterion(net(validation_inputs), validation_labels)
 		net.to(device)
 
+		loss_file.write(str(epoch + 1) + ',' + str(running_loss/batch_idx) + ',' + str(validation_loss.item()) + '\n')
+
+		# print current loss
+		print('training loss:', running_loss/batch_idx)
 		print('validation loss:', validation_loss.item())
 
+		# apply early stopping
 		if (validation_loss - 0) < sys.float_info.epsilon:
 			break
 
