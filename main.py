@@ -18,6 +18,7 @@ import dnn
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--data', type = str, default = os.getcwd(), help = 'absolute path to datasets')
 parser.add_argument('-p', '--preprocess', action = 'store_true', help = 'preprocess data')
+parser.add_argument('-m', '--model', type = str, default = None, help = 'absolute path to pre-trained model parameters')
 
 args = parser.parse_args()
 
@@ -76,92 +77,96 @@ print('device:', device, '\n')
 print('training deep neural nets')
 for net_name in nets.keys():
 	net = nets[net_name]
-	net.apply(dnn.parameters_init)
-	net.to(device)
 
-	print('\n' + net_name)
-
-	if 'original' in net_name:
-		training_loader = original_training_loader
-		validation_loader = original_validation_loader
-	elif 'imadjust' in net_name:
-		training_loader = imadjust_training_loader
-		validation_loader = imadjust_validation_loader
-	elif 'histeq' in net_name:
-		training_loader = histeq_training_loader
-		validation_loader = histeq_validation_loader
+	if args.model:
+		net.load_state_dict(torch.load(os.path.join(args.model, (net_name + '.pth'))))
 	else:
-		training_loader = adapthisteq_training_loader
-		validation_loader = adapthisteq_validation_loader
-
-    # define loss function and optimizer
-	criterion = nn.CrossEntropyLoss()
-	optimizer = optim.Adam(net.parameters())
-    
-	# create csv file to track training and validation loss
-	loss_file = open(net_name + '_' + 'loss.csv', 'w+')
-	loss_file.write('epoch,training_loss,validation_loss\n')
-
-	# train deep neural net
-	total_epochs = 15
-	for epoch in range(total_epochs):
-		print('epoch', epoch + 1, 'of', total_epochs)
-
-		batch_idx = 0
-		running_loss = 0
-		for batch_idx, data in enumerate(training_loader):
-			inputs = data[0]
-			labels = data[1]
-
-			# apply perturbations
-			for i in range(len(inputs)):
-				perturbation = random.choice([0, 1, 2, 3])
-				if perturbation == 1:
-					image = transforms.ToPILImage()(inputs[i])
-					image = transforms.RandomAffine(degrees = 0, translate = (0.1, 0.1), resample = PIL.Image.BILINEAR)(image)
-					inputs[i] = transforms.ToTensor()(image)
-				elif perturbation == 2:
-					image = transforms.ToPILImage()(inputs[i])
-					image = transforms.RandomResizedCrop(size = 48, ratio = (1, 1))(image)
-					inputs[i] = transforms.ToTensor()(image)
-				elif perturbation == 3:
-					image = transforms.ToPILImage()(inputs[i])
-					image = transforms.RandomRotation(degrees = 5, resample = PIL.Image.BILINEAR)(image)
-					inputs[i] = transforms.ToTensor()(image)
-				else:
-					continue
-
-			inputs = inputs.to(device)
-			labels = labels.to(device)
-
-			# optimize
-			optimizer.zero_grad()
-
-			outputs = net(inputs)
-			loss = criterion(outputs, labels)
-			loss.backward()
-			optimizer.step()
-
-			running_loss += loss.item()
-
-		# save training and validation loss to file
-		net.to('cpu')
-		validation_inputs, validation_labels = next(iter(validation_loader))
-		validation_loss = criterion(net(validation_inputs), validation_labels)
+		net.apply(dnn.parameters_init)
 		net.to(device)
 
-		loss_file.write(str(epoch + 1) + ',' + str(running_loss/batch_idx) + ',' + str(validation_loss.item()) + '\n')
+		print('\n' + net_name)
 
-		# print current loss
-		print('training loss:', running_loss/batch_idx)
-		print('validation loss:', validation_loss.item())
+		if 'original' in net_name:
+			training_loader = original_training_loader
+			validation_loader = original_validation_loader
+		elif 'imadjust' in net_name:
+			training_loader = imadjust_training_loader
+			validation_loader = imadjust_validation_loader
+		elif 'histeq' in net_name:
+			training_loader = histeq_training_loader
+			validation_loader = histeq_validation_loader
+		else:
+			training_loader = adapthisteq_training_loader
+			validation_loader = adapthisteq_validation_loader
 
-		# apply early stopping
-		if validation_loss < sys.float_info.epsilon:
-			break
+		# define loss function and optimizer
+		criterion = nn.CrossEntropyLoss()
+		optimizer = optim.Adam(net.parameters())
+		
+		# create csv file to track training and validation loss
+		loss_file = open(net_name + '_' + 'loss.csv', 'w+')
+		loss_file.write('epoch,training_loss,validation_loss\n')
 
-	# save trained parameters
-	torch.save(net.state_dict(), os.path.join(path, (net_name + '.pth')))
+		# train deep neural net
+		total_epochs = 15
+		for epoch in range(total_epochs):
+			print('epoch', epoch + 1, 'of', total_epochs)
+
+			batch_idx = 0
+			running_loss = 0
+			for batch_idx, data in enumerate(training_loader):
+				inputs = data[0]
+				labels = data[1]
+
+				# apply perturbations
+				for i in range(len(inputs)):
+					perturbation = random.choice([0, 1, 2, 3])
+					if perturbation == 1:
+						image = transforms.ToPILImage()(inputs[i])
+						image = transforms.RandomAffine(degrees = 0, translate = (0.1, 0.1), resample = PIL.Image.BILINEAR)(image)
+						inputs[i] = transforms.ToTensor()(image)
+					elif perturbation == 2:
+						image = transforms.ToPILImage()(inputs[i])
+						image = transforms.RandomResizedCrop(size = 48, ratio = (1, 1))(image)
+						inputs[i] = transforms.ToTensor()(image)
+					elif perturbation == 3:
+						image = transforms.ToPILImage()(inputs[i])
+						image = transforms.RandomRotation(degrees = 5, resample = PIL.Image.BILINEAR)(image)
+						inputs[i] = transforms.ToTensor()(image)
+					else:
+						continue
+
+				inputs = inputs.to(device)
+				labels = labels.to(device)
+
+				# optimize
+				optimizer.zero_grad()
+
+				outputs = net(inputs)
+				loss = criterion(outputs, labels)
+				loss.backward()
+				optimizer.step()
+
+				running_loss += loss.item()
+
+			# save training and validation loss to file
+			net.to('cpu')
+			validation_inputs, validation_labels = next(iter(validation_loader))
+			validation_loss = criterion(net(validation_inputs), validation_labels)
+			net.to(device)
+
+			loss_file.write(str(epoch + 1) + ',' + str(running_loss/batch_idx) + ',' + str(validation_loss.item()) + '\n')
+
+			# print current loss
+			print('training loss:', running_loss/batch_idx)
+			print('validation loss:', validation_loss.item())
+
+			# apply early stopping
+			if validation_loss < sys.float_info.epsilon:
+				break
+
+		# save trained parameters
+		torch.save(net.state_dict(), os.path.join(path, (net_name + '.pth')))
 
 # create multi-column deep neural net
 dnn_outputs = []
