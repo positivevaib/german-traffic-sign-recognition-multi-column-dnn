@@ -12,7 +12,7 @@ def parameters_init(module):
 
 # define classes
 class Net1(nn.Module):
-    '''five layer conv net'''
+    '''conv net'''
     def __init__(self):
         '''constructor'''
         super().__init__()
@@ -24,11 +24,11 @@ class Net1(nn.Module):
     
     def forward(self, x):
         '''perform single forward pass'''
-        x = F.max_pool2d(F.tanh(self.conv1(x)), 2)
-        x = F.max_pool2d(F.tanh(self.conv2(x)), 2)
-        x = F.max_pool2d(F.tanh(self.conv3(x)), 2)
+        x = F.max_pool2d(torch.tanh(self.conv1(x)), 2)
+        x = F.max_pool2d(torch.tanh(self.conv2(x)), 2)
+        x = F.max_pool2d(torch.tanh(self.conv3(x)), 2)
         x = x.view(-1, self.num_flat_features(x))
-        x = F.tanh(self.fc1(x))
+        x = torch.tanh(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -41,7 +41,7 @@ class Net1(nn.Module):
         return num_features
 
 class Net2(nn.Module):
-    '''five layer conv net'''
+    '''conv net'''
     def __init__(self):
         '''constructor'''
         super().__init__()
@@ -53,11 +53,11 @@ class Net2(nn.Module):
 
     def forward(self, x):
         '''perform single forward pass'''
-        x = F.max_pool2d(F.tanh(self.conv1(x)), 2)
-        x = F.max_pool2d(F.tanh(self.conv2(x)), 2)
-        x = F.max_pool2d(F.tanh(self.conv3(x)), 2)
+        x = F.max_pool2d(torch.tanh(self.conv1(x)), 2)
+        x = F.max_pool2d(torch.tanh(self.conv2(x)), 2)
+        x = F.max_pool2d(torch.tanh(self.conv3(x)), 2)
         x = x.view(-1, self.num_flat_features(x))
-        x = F.tanh(self.fc1(x))
+        x = torch.tanh(self.fc1(x))
         x = self.fc2(x)
         return x
 
