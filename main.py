@@ -4,7 +4,6 @@ import numpy as np
 import os
 import PIL
 import random
-import sys
 
 import torch
 import torch.nn as nn
@@ -17,27 +16,25 @@ import dnn
 # create argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--data', type = str, default = os.getcwd(), help = 'absolute path to datasets')
+parser.add_argument('-l', '--load', action = 'store_true', help = 'load pre-trained model parameters')
+parser.add_argument('-m', '--model', type = str, default = os.getcwd(), help = 'absolute path to model parameters')
 parser.add_argument('-p', '--preprocess', action = 'store_true', help = 'preprocess data')
-parser.add_argument('-m', '--model', type = str, default = None, help = 'absolute path to pre-trained model parameters')
 
 args = parser.parse_args()
-
-# current path
-path = args.data
 
 # preprocess data
 if args.preprocess:
 	print('preprocessing\n')
-	data.preprocess_images(path, dataset = 'training')
-	data.preprocess_images(path, dataset = 'test')
+	data.preprocess_images(args.data, dataset = 'training')
+	data.preprocess_images(args.data, dataset = 'test')
 
-	data.split_dataset(os.path.join(path, 'training_set'))
+	data.split_dataset(os.path.join(args.data, 'training_set'))
 
 	print()
 
 # load training data
 print('loading training data')
-training_set = data.load_dataset(path, dataset = 'training', training_batch_size = 32)
+training_set = data.load_dataset(args.data, dataset = 'training', training_batch_size = 32)
 original_training_loader = training_set['original']
 imadjust_training_loader = training_set['imadjust']
 histeq_training_loader = training_set['histeq']
@@ -45,7 +42,7 @@ adapthisteq_training_loader = training_set['adapthisteq']
 
 # load validation data
 print('loading validation data')
-validation_set = data.load_dataset(path, dataset = 'validation')
+validation_set = data.load_dataset(args.data, dataset = 'validation')
 original_validation_loader = validation_set['original']
 imadjust_validation_loader = validation_set['imadjust']
 histeq_validation_loader = validation_set['histeq']
@@ -53,7 +50,11 @@ adapthisteq_validation_loader = validation_set['adapthisteq']
 
 # load test data
 print('loading test data\n')
-test_loader = data.load_dataset(path, dataset = 'test')
+test_set = data.load_dataset(args.data, dataset = 'test')
+original_test_loader = test_set['original']
+imadjust_test_loader = test_set['imadjust']
+histeq_test_loader = test_set['histeq']
+adapthisteq_test_loader = test_set['adapthisteq']
 
 # instantiate deep neural nets
 nets = {}
@@ -74,12 +75,17 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('device:', device, '\n')
 
 # train deep neural nets
-print('training deep neural nets')
+if args.load:
+	print('loading pre-trained model parameters\n')
+else:
+	print('training deep neural nets')
+
 for net_name in nets.keys():
 	net = nets[net_name]
 
-	if args.model:
-		net.load_state_dict(torch.load(os.path.join(args.model, (net_name + '.pth'))))
+	if args.load:
+		print(net_name)
+		net.load_state_dict(torch.load(os.path.join(args.model, (net_name + '.pth')), map_location = device))
 	else:
 		net.apply(dnn.parameters_init)
 		net.to(device)
@@ -108,11 +114,13 @@ for net_name in nets.keys():
 		loss_file.write('epoch,training_loss,validation_loss\n')
 
 		# train deep neural net
+		validation_loss_prev = None
+
 		total_epochs = 15
 		for epoch in range(total_epochs):
 			print('epoch', epoch + 1, 'of', total_epochs)
 
-			batch_idx = 0
+			batch_idx = None
 			running_loss = 0
 			for batch_idx, data in enumerate(training_loader):
 				inputs = data[0]
@@ -149,39 +157,94 @@ for net_name in nets.keys():
 
 				running_loss += loss.item()
 
+				# initial training and validation loss
+				if epoch == 0 and batch_idx == 0:
+					net.to('cpu')
+					with torch.no_grad():
+						validation_inputs, validation_labels = next(iter(validation_loader))
+						validation_loss_prev = criterion(net(validation_inputs), validation_labels)
+					net.to(device)
+
+					loss_file.write(str(epoch) + ',' + str(running_loss) + ',' + str(validation_loss_prev.item()) + '\n')
+
+					print('initial training loss:', running_loss)
+					print('initial validation loss:', validation_loss_prev.item())
+
 			# save training and validation loss to file
 			net.to('cpu')
-			validation_inputs, validation_labels = next(iter(validation_loader))
-			validation_loss = criterion(net(validation_inputs), validation_labels)
+			with torch.no_grad():
+				validation_inputs, validation_labels = next(iter(validation_loader))
+				validation_loss = criterion(net(validation_inputs), validation_labels)
 			net.to(device)
 
-			loss_file.write(str(epoch + 1) + ',' + str(running_loss/batch_idx) + ',' + str(validation_loss.item()) + '\n')
+			loss_file.write(str(epoch + 1) + ',' + str(running_loss/batch_idx + 1) + ',' + str(validation_loss.item()) + '\n')
 
 			# print current loss
-			print('training loss:', running_loss/batch_idx)
+			print('training loss:', running_loss/(batch_idx + 1))
 			print('validation loss:', validation_loss.item())
 
 			# apply early stopping
-			if validation_loss < sys.float_info.epsilon:
+			if validation_loss > validation_loss_prev:
+				print('early stopping applied')
 				break
+			
+			validation_loss_prev = validation_loss
 
-		# save trained parameters
-		torch.save(net.state_dict(), os.path.join(path, (net_name + '.pth')))
+			# save trained parameters
+			torch.save(net.state_dict(), os.path.join(args.model, (net_name + '.pth')))
 
-# create multi-column deep neural net
-dnn_outputs = []
-for net in nets.values():
-	dnn_outputs.append(net(test_loader))
+# create csv file to track accuracy
+eval_file = open('eval.csv', 'w+')
+eval_file.write('net,accuracy\n')
 
-# average results
-mcdnn_output = dnn_outputs[0]
-for dnn_output in dnn_outputs[1:]:
-	mcdnn_output.add_(dnn_output)
+# evaluate deep neural nets and create multi-column deep neural net
+with torch.no_grad():
+	mcdnn_outputs = torch.zeros((len(next(iter(original_test_loader))), 43))
 
-mcdnn_output.div_(len(dnn_outputs))
+for net_name in net.keys():
+	net = nets[net_name]
 
-# compute predictions
-_, predictions = torch.argmax(mcdnn_output, dim = 0)
+	if 'original' in net_name:
+		test_loader = original_test_loader
+	elif 'imadjust' in net_name:
+		test_loader = imadjust_test_loader
+	elif 'histeq' in net_name:
+		test_loader = histeq_test_loader
+	else:
+		test_loader = adapthisteq_test_loader
+
+	# compute neural net accuracy and add outputs to mcdnn_outputs
+	net.to('cpu')
+	with torch.no_grad():
+		test_inputs, test_labels = next(iter(test_loader))
+		outputs = net(test_inputs)
+
+		mcdnn_outputs.add_(outputs)
+
+		_, predictions = torch.argmax(outputs, dim = 1)
+		accuracy = len(set(predictions) & set(test_labels))/len(predictions)
+	net.to(device)
+
+	# print neural net accuracy
+	print(net_name, 'accuracy:', round(accuracy, 2))
+
+	# save neural net accuracy to file
+	eval_file.write(net_name + ',' + str(round(accuracy, 2)) + '\n')
+
+# compute mcdnn predictions
+with torch.no_grad():
+	mcdnn_outputs.div_(len(nets))
+	_, mcdnn_predictions = torch.argmax(mcdnn_outputs, dim = 1)
+
+# evaluate multi-column deep neural net
+_, test_labels = next(iter(original_test_loader))
+accuracy = len(set(mcdnn_predictions) & set(test_labels))/len(mcdnn_predictions)
+
+# print mcdnn accuracy
+print('\nmcdnn accuracy:', roudn(accuracy, 2))
+
+# save mcdnn accuracy to file
+eval_file.write('mcdnn,' + str(round(accuracy, 2)))
 
 # save predictions
 file_out = open('mcdnn_predictions.csv', 'w+')
