@@ -43,19 +43,26 @@ def preprocess_images(path, dataset):
         crop_and_resize_images(os.path.join(path, 'test_set', 'images'))
 
 def split_dataset(path, tracks = 3):
-    '''split dataset into training and validation sets'''
+    '''split dataset into training, validation and test sets'''
     os.mkdir(os.path.join(os.path.dirname(path), 'validation_set'))
+    os.mkdir(os.path.join(os.path.dirname(path), 'test_set'))
     for file_name in os.listdir(path):
         if os.path.isdir(os.path.join(path, file_name)):
             os.mkdir(os.path.join(os.path.dirname(path), 'validation_set', file_name))
+            os.mkdir(os.path.join(os.path.dirname(path), 'test_set', file_name))
             for image_class in os.listdir(os.path.join(path, file_name)):
                 if os.path.isdir(os.path.join(path, file_name, image_class)):
                     os.mkdir(os.path.join(os.path.dirname(path), 'validation_set', file_name, image_class))
+                    os.mkdir(os.path.join(os.path.dirname(path), 'test_set', file_name, image_class))
                     for image in os.listdir(os.path.join(path, file_name, image_class)):
                         if image.endswith('.ppm'):
                             for idx in range(tracks):
-                                if '000' + str(idx) + '_' in image:
-                                    os.rename(os.path.join(path, file_name, image_class, image), os.path.join(os.path.dirname(path), 'validation_set', file_name, image_class, image))
+                                if '0' + str(idx) + '_' in image:
+                                    if idx != tracks - 1:
+                                        os.rename(os.path.join(path, file_name, image_class, image), os.path.join(os.path.dirname(path), 'validation_set', file_name, image_class, image))
+                                    else:
+                                        os.rename(os.path.join(path, file_name, image_class, image), os.path.join(os.path.dirname(path), 'test_set', file_name, image_class, image))
+
 
 def load_dataset(path, dataset, training_batch_size = 1):
     '''load dataset'''
@@ -75,10 +82,9 @@ def load_dataset(path, dataset, training_batch_size = 1):
         return data
 
     elif dataset == 'test':
-        data = []
-        for image_name in glob.glob(os.path.join(path, 'test_set', 'images', '*.ppm')):
-            image = Image.open(image_name)
-            image = torchvision.transforms.ToTensor()(image)
-            data.append(image)
-        data = torch.utils.data.DataLoader(data, batch_size = len(data))
+        data = {}
+        for file_name in os.listdir(os.path.join(path, 'test_set')):
+            if os.path.isdir(os.path.join(path, 'test_set', file_name)):
+                test_set = torchvision.datasets.ImageFolder(root = os.path.join(path, 'test_set', file_name), transform = torchvision.transforms.ToTensor())
+                data[file_name] = torch.utils.data.DataLoader(test_set, batch_size = len(test_set))
         return data
