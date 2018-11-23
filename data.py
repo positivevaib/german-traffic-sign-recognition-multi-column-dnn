@@ -32,15 +32,12 @@ def normalize_images(path):
     eng.normalize(path, nargout = 0)
     eng.exit()
 
-def preprocess_images(path, dataset):
+def preprocess_images(path):
     '''preprocess images'''
-    if dataset == 'training':
-        for image_class in os.listdir(os.path.join(path, 'training_set', 'original')):
-            if os.path.isdir(os.path.join(path, 'training_set', 'original', image_class)):
-                crop_and_resize_images(os.path.join(path, 'training_set', 'original', image_class))
-        normalize_images(os.path.join(path, 'training_set'))
-    elif dataset == 'test':
-        crop_and_resize_images(os.path.join(path, 'test_set', 'images'))
+    for image_class in os.listdir(os.path.join(path, 'training_set', 'original')):
+        if os.path.isdir(os.path.join(path, 'training_set', 'original', image_class)):
+            crop_and_resize_images(os.path.join(path, 'training_set', 'original', image_class))
+    normalize_images(os.path.join(path, 'training_set'))
 
 def split_dataset(path, tracks = 3):
     '''split dataset into training, validation and test sets'''
