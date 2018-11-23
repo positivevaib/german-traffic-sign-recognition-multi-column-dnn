@@ -25,11 +25,8 @@ args = parser.parse_args()
 # preprocess data
 if args.preprocess:
 	print('preprocessing\n')
-	data.preprocess_images(args.data, dataset = 'training')
-	data.preprocess_images(args.data, dataset = 'test')
-
+	data.preprocess_images(args.data)
 	data.split_dataset(os.path.join(args.data, 'training_set'))
-
 	print()
 
 # load training data
@@ -193,15 +190,17 @@ for net_name in nets.keys():
 			# save trained parameters
 			torch.save(net.state_dict(), os.path.join(args.model, (net_name + '.pth')))
 
+# evaluate deep neural nets and create multi-column deep neural net
+print('\nevaluating deep neural nets and creating multi-column deep neural net\n')
+
 # create csv file to track accuracy
 eval_file = open('eval.csv', 'w+')
 eval_file.write('net,accuracy\n')
 
-# evaluate deep neural nets and create multi-column deep neural net
 with torch.no_grad():
-	mcdnn_outputs = torch.zeros((len(next(iter(original_test_loader))), 43))
+	mcdnn_outputs = torch.zeros((next(iter(original_test_loader))[0].size()[0], 43))
 
-for net_name in net.keys():
+for net_name in nets.keys():
 	net = nets[net_name]
 
 	if 'original' in net_name:
@@ -217,35 +216,50 @@ for net_name in net.keys():
 	net.to('cpu')
 	with torch.no_grad():
 		test_inputs, test_labels = next(iter(test_loader))
+		test_labels.tolist()
+
 		outputs = net(test_inputs)
 
 		mcdnn_outputs.add_(outputs)
 
-		_, predictions = torch.argmax(outputs, dim = 1)
-		accuracy = len(set(predictions) & set(test_labels))/len(predictions)
+		_, predictions = torch.max(outputs, dim = 1)
+		predictions.tolist()
+
+		accuracy = 0
+		for i in range(len(test_labels)):
+			if predictions[i] == test_labels[i]:
+				accuracy += 1
+		accuracy = accuracy/len(test_labels)
 	net.to(device)
 
 	# print neural net accuracy
-	print(net_name, 'accuracy:', round(accuracy, 2))
+	print(net_name, 'accuracy:', round(accuracy*100, 2))
 
 	# save neural net accuracy to file
-	eval_file.write(net_name + ',' + str(round(accuracy, 2)) + '\n')
+	eval_file.write(net_name + ',' + str(round(accuracy*100, 2)) + '\n')
 
 # compute mcdnn predictions
 with torch.no_grad():
 	mcdnn_outputs.div_(len(nets))
-	_, mcdnn_predictions = torch.argmax(mcdnn_outputs, dim = 1)
+	_, mcdnn_predictions = torch.max(mcdnn_outputs, dim = 1)
+	mcdnn_predictions.tolist()
 
 # evaluate multi-column deep neural net
 _, test_labels = next(iter(original_test_loader))
-accuracy = len(set(mcdnn_predictions) & set(test_labels))/len(mcdnn_predictions)
+test_labels.tolist()
+
+accuracy = 0
+for i in range(len(test_labels)):
+	if mcdnn_predictions[i] == test_labels[i]:
+		accuracy += 1
+accuracy = accuracy/len(test_labels)
 
 # print mcdnn accuracy
-print('\nmcdnn accuracy:', roudn(accuracy, 2))
+print('\nmcdnn accuracy:', round(accuracy*100, 2))
 
 # save mcdnn accuracy to file
-eval_file.write('mcdnn,' + str(round(accuracy, 2)))
+eval_file.write('mcdnn,' + str(round(accuracy*100, 2)))
 
 # save predictions
 file_out = open('mcdnn_predictions.csv', 'w+')
-np.savetxt(file_out, predictions.numpy(), delimiter = ',')
+np.savetxt(file_out, mcdnn_predictions.numpy(), delimiter = ',')
