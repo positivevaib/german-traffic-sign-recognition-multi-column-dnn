@@ -1,5 +1,7 @@
 # german-traffic-sign-recognition-multi-column-dnn
-Heavily based on the 'Multi-Column Deep Neural Network for Traffic Sign Classification' paper by Ciresan et al.
+Classification of german traffic signs using the 'German Traffic Sign Benchmarks' dataset.
+
+This approach is heavily based on the 'Multi-Column Deep Neural Network for Traffic Sign Classification' paper by Ciresan et al.
 
 It differs from the implementation in said paper in certain aspects where enough details about the methods used were not available.
 
