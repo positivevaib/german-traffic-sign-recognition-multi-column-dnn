@@ -3,16 +3,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # define function
 def parameters_init(module):
     '''initialize parameters'''
     if isinstance(module, (nn.Conv2d, nn.Linear)):
-        nn.init.uniform_(module.weight.data, a = -0.05, b = 0.05)
-        nn.init.uniform_(module.bias.data, a = -0.05, b = 0.05)
+        nn.init.uniform_(module.weight.data, a=-0.05, b=0.05)
+        nn.init.uniform_(module.bias.data, a=-0.05, b=0.05)
+
 
 # define classes
 class Net1(nn.Module):
     '''conv net'''
+
     def __init__(self):
         '''constructor'''
         super().__init__()
@@ -21,7 +24,7 @@ class Net1(nn.Module):
         self.conv3 = nn.Conv2d(150, 250, 4)
         self.fc1 = nn.Linear(250 * 3 * 3, 300)
         self.fc2 = nn.Linear(300, 43)
-    
+
     def forward(self, x):
         '''perform single forward pass'''
         x = F.max_pool2d(torch.tanh(self.conv1(x)), 2)
@@ -40,8 +43,10 @@ class Net1(nn.Module):
             num_features *= dim
         return num_features
 
+
 class Net2(nn.Module):
     '''conv net'''
+
     def __init__(self):
         '''constructor'''
         super().__init__()
